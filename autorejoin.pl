@@ -9,20 +9,15 @@ use Irssi;
 use Irssi::Irc;
 use strict;
 use vars qw($VERSION %IRSSI);
-$VERSION = "1.0.0";
+$VERSION = "1.0.1";
 %IRSSI = (
-	authors => "Timo 'cras' Sirainen, Leszek Matok",
+	authors => "Timo 'cras' Sirainen, Leszek Matok, Peter 'Sakartu' Wagenaar",
 	contact => "lam\@lac.pl",
 	name => "autorejoin",
 	description => "Automatically rejoin to channel after being kick, after a (short) user-defined delay",
 	license => "GPLv2",
 	changed => "10.3.2002 14:00"
 );
-
-
-# How many seconds to wait before the rejoin?
-# TODO: make this a /setting
-my $delay = 5;
 
 my @tags;
 my $acttag = 0;
@@ -48,10 +43,19 @@ sub event_rejoin_kick {
 	my $rejoinchan = $chanrec->{ name } if ( $chanrec );
 	my $servtag = $server->{ tag };
 
-	Irssi::print "Rejoining $rejoinchan in $delay seconds.";
-	$tags[$acttag] = Irssi::timeout_add( $delay * 1000, "rejoin", "$acttag $servtag $rejoinchan $password" );
-	$acttag++;
-	$acttag = 0 if ( $acttag > 60 );
+    my @chans = split(/[ ,]/, Irssi::settings_get_str('autorejoin_channels'));
+	my $delay = Irssi::settings_get_str('autorejoin_delay');
+    foreach my $chan (@chans) {
+        if (lc($chan) eq lc($channel)) {
+			Irssi::print "Rejoining $rejoinchan in $delay seconds.";
+			$tags[$acttag] = Irssi::timeout_add( $delay * 1000, "rejoin", "$acttag $servtag $rejoinchan $password" );
+			$acttag++;
+			$acttag = 0 if ( $acttag > 60 );
+		}
+	}
+
 }
 
+Irssi::settings_add_str('misc', 'autorejoin_delay', '5');
+Irssi::settings_add_str('misc', 'autorejoin_channels', '');
 Irssi::signal_add( 'event kick', 'event_rejoin_kick' );
